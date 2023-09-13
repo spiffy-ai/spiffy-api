@@ -8,7 +8,14 @@ import websockets
 import spiffy
 
 
-async def _api_requester(api_url, method, data=None):
+def _get_headers():
+    if spiffy.via_blobr:
+        return {'X-BLOBR-KEY': spiffy.api_key}
+    else:
+        return {'Authorization': f'Bearer {spiffy.api_key}'}
+
+
+async def _api_requester(api_url, method, data=None, stream=False):
     """
     Makes an API request to the Spiffy API.
     args:
@@ -24,10 +31,7 @@ async def _api_requester(api_url, method, data=None):
     if method == 'get' and data is not None:
         raise ValueError("data must be None for 'get' requests")
 
-    if spiffy.via_blobr:
-        headers = {'X-BLOBR-KEY': spiffy.api_key}
-    else:
-        headers = {'Authorization': f'Bearer {spiffy.api_key}'}
+    headers = _get_headers()
 
     async with aiohttp.ClientSession(headers=headers) as session:
         if method == 'get':
@@ -309,7 +313,7 @@ async def aget_available_user_models(user_id: str) -> List[str]:
     return [response]
 
 
-async def agenerate(model: str, model_v: str, prompt: str,
+async def agenerate(model_id: str, model_v: str, prompt: str,
                     generation_config: Dict[str, Union[str, int, float]]) -> AsyncGenerator[List[List[str]], None]:
     """
     The main inference function. Returns a streamed list of generated tokens
@@ -327,5 +331,25 @@ async def agenerate(model: str, model_v: str, prompt: str,
         ValueError: If user_id or model_v don't exist.
         RuntimeError: For any other error.
     """
-    async for x in _websocket_caller(model, model_v, prompt, generation_config, fallback_to_default_model=False):
+    async for x in _websocket_caller(model_id, model_v, prompt, generation_config, fallback_to_default_model=False):
         yield x
+
+    # TODO: experimental code for streaming inference
+    # headers = _get_headers()
+    # data = {
+    #     "model_id": model_id,
+    #     "model_v": model_v,
+    #     "prompt": prompt,
+    #     "generation_config": generation_config,
+    #     "fallback_to_default_model": True,
+    # }
+    # api_url = f"{spiffy.api_base_train}/completion/stream"
+    # async with aiohttp.ClientSession(headers=headers) as session:
+    #     async with session.post(api_url, json=data) as response:
+    #         if response.status == 200:
+    #             async for line in response.content.iter_any():
+    #                 if line:  # filter out keep-alive lines
+    #                     yield line
+    #         else:
+    #             response_text = await response.text()
+    #             raise RuntimeError(f"Request failed with status code: {response.status} - {response_text}")
