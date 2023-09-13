@@ -15,7 +15,7 @@ def _get_headers():
         return {'Authorization': f'Bearer {spiffy.api_key}'}
 
 
-async def _api_requester(api_url, method, data=None, stream=False):
+async def _api_requester(api_url, method, data=None):
     """
     Makes an API request to the Spiffy API.
     args:
@@ -333,23 +333,3 @@ async def agenerate(model_id: str, model_v: str, prompt: str,
     """
     async for x in _websocket_caller(model_id, model_v, prompt, generation_config, fallback_to_default_model=False):
         yield x
-
-    # TODO: experimental code for streaming inference
-    # headers = _get_headers()
-    # data = {
-    #     "model_id": model_id,
-    #     "model_v": model_v,
-    #     "prompt": prompt,
-    #     "generation_config": generation_config,
-    #     "fallback_to_default_model": True,
-    # }
-    # api_url = f"{spiffy.api_base_train}/completion/stream"
-    # async with aiohttp.ClientSession(headers=headers) as session:
-    #     async with session.post(api_url, json=data) as response:
-    #         if response.status == 200:
-    #             async for line in response.content.iter_any():
-    #                 if line:  # filter out keep-alive lines
-    #                     yield line
-    #         else:
-    #             response_text = await response.text()
-    #             raise RuntimeError(f"Request failed with status code: {response.status} - {response_text}")
