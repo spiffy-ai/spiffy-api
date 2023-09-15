@@ -313,8 +313,8 @@ async def aget_available_user_models(user_id: str) -> List[str]:
     return [response]
 
 
-async def agenerate(model_id: str, model_v: str, prompt: str,
-                    generation_config: Dict[str, Union[str, int, float]]) -> AsyncGenerator[List[List[str]], None]:
+async def agenerate_streamed(model_id: str, model_v: str, prompt: str,
+                             generation_config: Dict[str, Union[str, int, float]]) -> AsyncGenerator[List[List[str]], None]:
     """
     The main inference function. Returns a streamed list of generated tokens
     args:
@@ -333,3 +333,34 @@ async def agenerate(model_id: str, model_v: str, prompt: str,
     """
     async for x in _websocket_caller(model_id, model_v, prompt, generation_config, fallback_to_default_model=False):
         yield x
+
+
+async def agenerate(model_id: str, model_v: str, prompt: str,
+                    generation_config: Dict[str, Union[str, int, float]]) -> List[List[str]]:
+    """
+    The main inference function. Returns a streamed list of generated tokens
+    args:
+        model: The ID of the user.
+        model_v: Model version as returned by `aget_available_user_models`
+    returns:
+        output (List[List[str]]): A list of generations, each list is a list of tokens, each token is a string.
+            This is a streamed output. It can be used as follows:
+            ```
+            for output in agenerate(...):
+                print(output)
+            ```
+    throws:
+        ValueError: If user_id or model_v don't exist.
+        RuntimeError: For any other error.
+    """
+    data = {
+        "model_id": model_id,
+        "model_v": model_v,
+        "prompt": prompt,
+        "generation_config": generation_config,
+        "fallback_to_default_model": True,
+    }
+    url = f"{spiffy.api_base_train}/completion/generate"
+    response = await _api_requester(url, method='post', data=data)
+    response = json.loads(response)
+    return response
